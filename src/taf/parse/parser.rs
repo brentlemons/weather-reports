@@ -1,4 +1,5 @@
 use crate::tokens::*;
+use chrono::{DateTime, Utc};
 
 peg::parser! {
     pub grammar weather_reports() for str {
@@ -19,8 +20,32 @@ peg::parser! {
             }
 
         pub rule icao_identifier() -> &'input str = $(quiet!{letter() letter_or_digit()*<3>} / expected!("ICAO identifier"));
-        pub rule issue_time() -> &'input str = $(quiet!{digit()*<6> "Z"} / expected!("issue time"));
-        pub rule valid_times() -> &'input str = $(quiet!{digit()*<4> "/" digit()*<4>} / expected!("valid times"));
+
+        pub rule issue_time() -> DateTime<Utc>
+            = day:$(['0'..='9']*<2>) hour:$(['0'..='9']*<2>) minute:$(['0'..='9']*<2>) "Z" {
+                ddhhmm_to_datetime(
+                    day.parse::<u32>().unwrap(), 
+                    hour.parse::<u32>().unwrap(), 
+                    minute.parse::<u32>().unwrap()
+                )
+            }
+
+        pub rule valid_times() -> ValidDateTimes
+            = start_dd:$(['0'..='9']*<2>) start_hh:$(['0'..='9']*<2>) "/" end_dd:$(['0'..='9']*<2>) end_hh:$(['0'..='9']*<2>) {
+                ValidDateTimes {
+                    start: ddhhmm_to_datetime(
+                        start_dd.parse::<u32>().unwrap(),
+                        start_hh.parse::<u32>().unwrap(),
+                        0
+                    ),
+                    end: ddhhmm_to_datetime(
+                        end_dd.parse::<u32>().unwrap(),
+                        end_hh.parse::<u32>().unwrap(),
+                        0
+                    )
+                }
+            }
+
         pub rule conditions() -> &'input str = $(quiet!{[_]* ![_]})
 
         /// This must also consume garbage characters from irregular reports
