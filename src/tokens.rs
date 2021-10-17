@@ -468,3 +468,14 @@ pub struct MetarReport<'input> {
     /// This may indicate that measurements are unreliable
     pub maintenance_needed: bool,
 }
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct TafReport<'input> {
+    /// Station [ICAO identifier](https://en.wikipedia.org/wiki/ICAO_airport_code)
+    pub station: &'input str,
+    pub issue_time: &'input str,
+    pub valid_times: &'input str,
+    pub conditions: &'input str,
+    // pub valid_start_time: &'input str,
+    // pub valid_end_time: &'input str,
+}
