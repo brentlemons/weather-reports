@@ -4,7 +4,7 @@ use codespan_reporting::term::{
 };
 use std::io::Read;
 
-use weather_reports::parse::metar;
+use weather_reports::metar::parse::metar;
 
 fn main() {
     let filename = std::env::args().skip(1).next().expect("specify a filename");
@@ -46,7 +46,7 @@ fn main() {
                     },
                     &report,
                 ),
-                &weather_reports::parse::into_diagnostic(&err),
+                &weather_reports::metar::parse::into_diagnostic(&err),
             )
             .unwrap();
         }
