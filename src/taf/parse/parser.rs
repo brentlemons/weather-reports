@@ -1,5 +1,7 @@
 use crate::tokens::*;
+use crate::utils::*;
 use chrono::{DateTime, Utc};
+use crate::taf::builder::*;
 
 peg::parser! {
     pub grammar weather_reports() for str {
@@ -11,6 +13,7 @@ peg::parser! {
                     valid_times:valid_times() whitespace()
                     conditions:conditions()
                     {
+                        let taf = TafBuilder::new();
                 TafReport {
                     station,
                     issue_time,
