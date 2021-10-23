@@ -1,6 +1,8 @@
+use crate::tokens::*;
+use crate::utils::*;
 use chrono::{DateTime, Utc};
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Taf {
     /// Station [ICAO identifier](https://en.wikipedia.org/wiki/ICAO_airport_code)
     station: String,
@@ -12,32 +14,40 @@ pub struct Taf {
 pub struct TafBuilder<'a> {
     station: &'a str,
     issue_time: &'a str,
-    valid_times: DateTime<Utc>,
-    conditions: &'a str,
+    valid_times: &'a str,
+    conditions: Option<&'a str>,
 }
 
 impl<'a> TafBuilder<'a> {
 
-    pub fn new(station: String, issue_time: DateTime<Utc>, valid_times: ValidDateTimes) -> TafBuilder<'a> {
+    pub fn new(station: &'a str, issue_time: &'a str, valid_times: &'a str) -> TafBuilder<'a> {
         TafBuilder {
             station: station,
             issue_time: issue_time,
             valid_times: valid_times,
-            conditions: Default::default(),
+            conditions: None,
         }
     }
 
     pub fn with_conditions(&mut self, conditions: &'a str) -> &mut Self {
-        self.conditions = conditions;
+        self.conditions = Some(conditions);
         self
     }
 
     pub fn build(&self) -> Taf {
         Taf {
-            station: self.station,
-            issue_time: self.issue_time,
-            valid_times: self.valid_times,
-            conditions: self.conditions,
+            station: String::from(self.station),
+            issue_time: ddhhmm_to_datetime(self.issue_time),
+            valid_times: {
+                ValidDateTimes {
+                    start: ddhhmm_to_datetime(&self.valid_times[0..4]),
+                    end: ddhhmm_to_datetime(&self.valid_times[5..])
+                }
+            },
+            conditions: match self.conditions {
+                Some(conditions) => Some(String::from(conditions)),
+                None => None
+            },
         }
     }
 
