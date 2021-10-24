@@ -55,10 +55,33 @@ peg::parser! {
             single
         }
 
-        rule visibility() -> &'input str = visibility:($(['0'..='9']*<4>) / $( (("P6") / (['0'..='6']) / (['0'..='6']" "['0'..='9']"/"['0'..='9']) "SM"))) {
-            // ((?:\\d{4})|      (?:(?:(?:P6)  |  (?:[0-6])  |  (?:[0-6]\\s[0-9]/[0-9])  |  (?:[0-9]/[0-9]))       SM)      )
-            visibility
-        }
+        rule visibility() -> &'input str // metars have an option for NDV and NCD; do tafs?
+            = visibility: (
+                vis_no_info()
+                /
+                vis_meters()
+                /
+                vis_statute_miles()
+            ) { visibility }
+
+        rule vis_no_info() -> &'input str 
+            = vis_no_info: $(slash()*<4>) { vis_no_info } // four slashes -> no visibility info available
+
+        rule vis_meters() -> &'input str 
+            = vis_meters: $(numeric()*<4>) { vis_meters } // four numbers -> visibility in meters
+
+        rule vis_statute_miles() -> &'input str 
+            = vis_statute_miles: $(
+                $(
+                    $("P6") // greater than 6 SM {P6SM}
+                    /
+                    $(numeric() slash() numeric()) // fractional number SM {1/2SM}
+                    /
+                    $(numeric() " " numeric() slash() numeric()) // whole and fractional number SM {1 1/2SM}
+                    /
+                    $(numeric()) // whole number SM {3SM}
+                ) "SM"
+            ) { vis_statute_miles }
 
         rule wind() -> Wind = wind_direction:wind_direction() wind_speed:wind_speed() wind_gust:wind_gust()? "KT" {
             WindBuilder::new()
@@ -66,23 +89,24 @@ peg::parser! {
                 .with_speed(wind_speed)
                 .with_gust_speed(wind_gust)
                 .build()
-            // println!("wd: {} | ws: {} | wg: {}", wind_direction, wind_speed, wind_gust.unwrap_or("no gust"));
-            // "stuff"
         }
 
-        rule wind_direction() -> &'input str = wind_direction:$(['A'..='Z' | '0'..='9']*<3>) {
+        rule wind_direction() -> &'input str = wind_direction:$(alpha_numeric()*<3>) {
             wind_direction
         }
 
-        rule wind_speed() -> &'input str = wind_speed:$(['0'..='9']*<2>) {
+        rule wind_speed() -> &'input str = wind_speed:$(numeric()*<2>) {
             wind_speed
         }
 
-        rule wind_gust() -> &'input str = "G" wind_gust:$(['0'..='9']*<2>) {
+        rule wind_gust() -> &'input str = "G" wind_gust:$(numeric()*<2>) {
             wind_gust
         }
 
-//		("^((?:\\s)?(?<visibility>(?:\\d{4})|(?:(?:(?:P6)|(?:[0-6])|(?:[0-6]\\s[0-9]/[0-9])|(?:[0-9]/[0-9]))SM))?(?<other>.*)$");
+        rule numeric() -> &'input str = numeric:$(['0'..='9']) { numeric }
+        rule aplha() -> &'input str = alpha:$(['A'..='Z']) { alpha }
+        rule alpha_numeric() -> &'input str = alpha_numeric:$(['A'..='Z' | '0'..='9']) { alpha_numeric }
+        rule slash() -> &'input str = slash:$(['/']) { slash }
 
         /// This must also consume garbage characters from irregular reports
         pub rule whitespace() = required_whitespace()?
