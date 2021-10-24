@@ -1,4 +1,6 @@
 use crate::taf::builder::*;
+use crate::utils::*;
+
 
 peg::parser! {
     pub grammar weather_reports() for str {
@@ -8,14 +10,16 @@ peg::parser! {
                     station:icao_identifier() whitespace()
                     issue_time:issue_time() whitespace()
                     valid_times:valid_times() whitespace()
+                    current: condition() whitespace()
                     conditions:conditions() 
                     last: transition() whitespace()
                     next: conditions()
                     end()
                     {
+                        println!("current: *{}*", current);
                         println!("last: *{}*", last);
                         TafBuilder::new(station, issue_time, valid_times)
-                            .with_conditions("conditions")
+                            .with_conditions(&conditions)
                             .build()
             }
 
@@ -40,12 +44,45 @@ peg::parser! {
             single
         }
 
+        rule condition() -> &'input str = wind:wind() " " visibility:visibility() {
+            println!("wind: {:#?}", wind);
+            println!("visibility: {}", visibility);
+            "stuff"
+        }
+
         rule transition() -> &'input str = single:$("FM" ['0'..='9']*<6>) {
             println!("> _{}_", single);
             single
         }
 
-//		("^(?<wind>(?<direction>\\w{3}|\\d{3})(?<speed>\\d{2})(?:G(?<gustSpeed>\\d{2}))?KT)?(?:\\s)?(?<visibility>(?:\\d{4})|(?:(?:(?:P6)|(?:[0-6])|(?:[0-6]\\s[0-9]/[0-9])|(?:[0-9]/[0-9]))SM))?(?<other>.*)$");
+        rule visibility() -> &'input str = visibility:($(['0'..='9']*<4>) / $( (("P6") / (['0'..='6']) / (['0'..='6']" "['0'..='9']"/"['0'..='9']) "SM"))) {
+            // ((?:\\d{4})|      (?:(?:(?:P6)  |  (?:[0-6])  |  (?:[0-6]\\s[0-9]/[0-9])  |  (?:[0-9]/[0-9]))       SM)      )
+            visibility
+        }
+
+        rule wind() -> Wind = wind_direction:wind_direction() wind_speed:wind_speed() wind_gust:wind_gust()? "KT" {
+            WindBuilder::new()
+                .with_direction(wind_direction)
+                .with_speed(wind_speed)
+                .with_gust_speed(wind_gust)
+                .build()
+            // println!("wd: {} | ws: {} | wg: {}", wind_direction, wind_speed, wind_gust.unwrap_or("no gust"));
+            // "stuff"
+        }
+
+        rule wind_direction() -> &'input str = wind_direction:$(['A'..='Z' | '0'..='9']*<3>) {
+            wind_direction
+        }
+
+        rule wind_speed() -> &'input str = wind_speed:$(['0'..='9']*<2>) {
+            wind_speed
+        }
+
+        rule wind_gust() -> &'input str = "G" wind_gust:$(['0'..='9']*<2>) {
+            wind_gust
+        }
+
+//		("^((?:\\s)?(?<visibility>(?:\\d{4})|(?:(?:(?:P6)|(?:[0-6])|(?:[0-6]\\s[0-9]/[0-9])|(?:[0-9]/[0-9]))SM))?(?<other>.*)$");
 
         /// This must also consume garbage characters from irregular reports
         pub rule whitespace() = required_whitespace()?
