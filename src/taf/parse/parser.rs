@@ -8,10 +8,14 @@ peg::parser! {
                     station:icao_identifier() whitespace()
                     issue_time:issue_time() whitespace()
                     valid_times:valid_times() whitespace()
-                    conditions:conditions()
+                    conditions:conditions() 
+                    last: transition() whitespace()
+                    next: conditions()
+                    end()
                     {
+                        println!("last: *{}*", last);
                         TafBuilder::new(station, issue_time, valid_times)
-                            .with_conditions(conditions)
+                            .with_conditions("conditions")
                             .build()
             }
 
@@ -19,7 +23,29 @@ peg::parser! {
         pub rule issue_time() -> &'input str = $(quiet!{$(['0'..='9']*<6>) "Z"});
         pub rule valid_times() -> &'input str = $(quiet!{$(['0'..='9']*<2>) $(['0'..='9']*<2>) "/" $(['0'..='9']*<2>) $(['0'..='9']*<2>)});
 
-        pub rule conditions() -> &'input str = $(quiet!{[_]* ![_]})
+        pub rule conditions() -> String = stuff:single() ++ " " {
+
+            println!("--> .{}.", stuff.len());
+            for x in &stuff {
+                println!("-> .{}.", x);
+            }
+            let string = stuff.join(" ");
+            println!("=> ,{},", string);
+            string
+        };
+        pub rule end() -> &'input str = $(quiet!{[_]* ![_]});
+
+        rule single() -> &'input str = single:$(&(transition()) / ['A'..='Z' | '0'..='9']+) {
+            println!("> _{}_", single);
+            single
+        }
+
+        rule transition() -> &'input str = single:$("FM" ['0'..='9']*<6>) {
+            println!("> _{}_", single);
+            single
+        }
+
+//		("^(?<wind>(?<direction>\\w{3}|\\d{3})(?<speed>\\d{2})(?:G(?<gustSpeed>\\d{2}))?KT)?(?:\\s)?(?<visibility>(?:\\d{4})|(?:(?:(?:P6)|(?:[0-6])|(?:[0-6]\\s[0-9]/[0-9])|(?:[0-9]/[0-9]))SM))?(?<other>.*)$");
 
         /// This must also consume garbage characters from irregular reports
         pub rule whitespace() = required_whitespace()?
