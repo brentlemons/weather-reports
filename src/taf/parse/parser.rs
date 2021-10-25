@@ -1,5 +1,6 @@
 use crate::taf::builder::*;
-use crate::utils::*;
+use crate::utils::wind::*;
+use crate::utils::visibility::*;
 
 
 peg::parser! {
